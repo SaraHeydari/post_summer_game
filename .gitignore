@@ -1,0 +1,9 @@
+# Firebase config reference (kept locally only)
+firebase_config.txt
+
+# Internal handover / context docs
+HANDOVER.md
+
+# macOS
+.DS_Store
+**/.DS_Store

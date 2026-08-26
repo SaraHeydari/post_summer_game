@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where the Hell Were You? — Host Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  window._fb = { initializeApp, getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc };
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --navy: #0D1B2A;
+  --navy-mid: #162436;
+  --navy-light: #1E3552;
+  --amber: #E8A838;
+  --amber-light: #F2C46D;
+  --cream: #F0EAD6;
+  --cream-dim: #B8B09A;
+  --red: #E05C3A;
+  --green: #4CAF7D;
+  --white: #fff;
+}
+
+body {
+  background: var(--navy);
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  font-size: 14px;
+}
+
+/* ── HEADER ── */
+.header {
+  background: var(--navy-mid);
+  border-bottom: 1px solid var(--navy-light);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header h1 {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 1.3rem;
+  color: var(--white);
+}
+.header h1 span { color: var(--amber); }
+
+.host-badge {
+  background: var(--amber);
+  color: var(--navy);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.2rem 0.6rem;
+  border-radius: 99px;
+}
+
+/* ── TABS ── */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--navy-light);
+  background: var(--navy-mid);
+  padding: 0 1.5rem;
+}
+
+.tab {
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--cream-dim);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  user-select: none;
+}
+.tab:hover { color: var(--cream); }
+.tab.active { color: var(--amber); border-bottom-color: var(--amber); }
+
+.tab-content { display: none; padding: 1.5rem; max-width: 900px; }
+.tab-content.active { display: block; }
+
+/* ── FORM ELEMENTS ── */
+.section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  color: var(--amber);
+  margin-bottom: 1rem;
+}
+
+.field { margin-bottom: 0.85rem; }
+.field label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--cream-dim);
+  margin-bottom: 0.3rem;
+}
+
+.field input, .field select {
+  width: 100%;
+  background: var(--navy);
+  border: 1.5px solid var(--navy-light);
+  border-radius: 8px;
+  color: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  padding: 0.55rem 0.75rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus, .field select:focus { border-color: var(--amber); }
+.field input[type="number"] { font-family: 'DM Mono', monospace; }
+
+.field-row {
+  display: grid;
+  gap: 0.75rem;
+}
+.field-row.col2 { grid-template-columns: 1fr 1fr; }
+.field-row.col3 { grid-template-columns: 1fr 1fr 1fr; }
+.field-row.col4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+.btn-primary  { background: var(--amber); color: var(--navy); }
+.btn-primary:hover:not(:disabled)  { background: var(--amber-light); }
+.btn-secondary { background: var(--navy-light); color: var(--cream); }
+.btn-secondary:hover { background: #274060; }
+.btn-danger   { background: var(--red); color: var(--white); }
+.btn-danger:hover { opacity: 0.85; }
+.btn-success  { background: var(--green); color: var(--white); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.78rem; }
+
+/* ── CARD ── */
+.card {
+  background: var(--navy-mid);
+  border: 1px solid var(--navy-light);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* ── ROUNDS LIST ── */
+.rounds-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.round-card {
+  background: var(--navy-mid);
+  border: 1px solid var(--navy-light);
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+}
+
+.round-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+.round-card-header:hover { background: rgba(255,255,255,0.03); }
+
+.round-num {
+  background: var(--amber);
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 5px;
+  white-space: nowrap;
+  font-family: 'DM Mono', monospace;
+}
+
+.round-summary {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--cream-dim);
+}
+.round-summary strong { color: var(--cream); }
+
+.round-status {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+.round-status.complete { background: rgba(76,175,125,0.2); color: var(--green); }
+.round-status.incomplete { background: rgba(232,168,56,0.15); color: var(--amber); }
+
+.round-card-body {
+  border-top: 1px solid var(--navy-light);
+  padding: 1rem;
+  display: none;
+}
+.round-card-body.open { display: block; }
+
+.photo-preview-wrap {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.photo-preview {
+  width: 120px;
+  height: 90px;
+  border-radius: 8px;
+  background: var(--navy);
+  border: 2px dashed var(--navy-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: var(--cream-dim);
+  text-align: center;
+}
+
+.photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.round-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── DRAG HANDLE ── */
+.drag-handle {
+  cursor: grab;
+  color: var(--cream-dim);
+  font-size: 1rem;
+  padding: 0 0.25rem;
+  user-select: none;
+}
+.drag-handle:active { cursor: grabbing; }
+
+/* ── GAME TAB ── */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.stat-box {
+  background: var(--navy);
+  border: 1px solid var(--navy-light);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+
+.stat-value {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.8rem;
+  color: var(--amber);
+  font-weight: 500;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--cream-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 0.25rem;
+}
+
+.player-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.player-chip {
+  background: var(--navy-light);
+  border-radius: 99px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  animation: popIn 0.25s ease;
+}
+@keyframes popIn { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.phase-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--cream-dim);
+  margin-bottom: 0.5rem;
+}
+
+.phase-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--cream-dim);
+}
+.phase-dot.active { background: var(--green); animation: blink 1.2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.connect-box {
+  background: var(--navy-mid);
+  border: 1px solid var(--navy-light);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.notice {
+  background: rgba(232,168,56,0.1);
+  border: 1px solid rgba(232,168,56,0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.82rem;
+  color: var(--amber);
+  line-height: 1.5;
+  margin-top: 0.75rem;
+}
+
+.divider { border: none; border-top: 1px solid var(--navy-light); margin: 1rem 0; }
+
+.join-code-display {
+  font-family: 'DM Mono', monospace;
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.2em;
+  text-align: center;
+  padding: 0.5rem;
+}
+
+.progress-bar-wrap {
+  background: var(--navy);
+  border-radius: 99px;
+  height: 6px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.progress-bar {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 99px;
+  transition: width 0.5s;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Where the Hell <span>Were You?</span></h1>
+  <span class="host-badge">🎛️ Host Control</span>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="settings">⚙️ Settings</div>
+  <div class="tab" data-tab="rounds">📸 Rounds</div>
+  <div class="tab" data-tab="game">🎮 Game</div>
+</div>
+
+<!-- ══════════ SETTINGS TAB ══════════ -->
+<div class="tab-content active" id="tab-settings">
+
+  <div class="card">
+    <div class="section-title">Firebase Configuration</div>
+    <div class="field-row col2">
+      <div class="field">
+        <label>API Key</label>
+        <input type="text" id="cfg-apiKey" placeholder="AIzaSy..." autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Project ID</label>
+        <input type="text" id="cfg-projectId" placeholder="yourapp-12345" autocomplete="off">
+      </div>
+    </div>
+    <div class="field-row col2">
+      <div class="field">
+        <label>App ID</label>
+        <input type="text" id="cfg-appId" placeholder="1:123456:web:abc123" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>Join Code</label>
+        <input type="text" id="cfg-joincode" placeholder="e.g. TRAVEL42" maxlength="20" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.1em">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Game Timings</div>
+    <div class="field-row col3">
+      <div class="field">
+        <label>Get Ready (seconds)</label>
+        <input type="number" id="cfg-ready" value="5" min="3" max="30">
+      </div>
+      <div class="field">
+        <label>Guessing Timer (seconds)</label>
+        <input type="number" id="cfg-guess" value="10" min="5" max="60">
+      </div>
+      <div class="field">
+        <label>Reveal Duration (seconds)</label>
+        <input type="number" id="cfg-reveal" value="15" min="5" max="60">
+      </div>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="btn-save-settings">💾 Save Settings</button>
+  <span id="settings-saved" style="margin-left:0.75rem;font-size:0.8rem;color:var(--green);display:none">✓ Saved</span>
+</div>
+
+<!-- ══════════ ROUNDS TAB ══════════ -->
+<div class="tab-content" id="tab-rounds">
+
+  <div class="rounds-toolbar">
+    <button class="btn btn-primary" id="btn-add-round">+ Add Round</button>
+    <button class="btn btn-secondary" id="btn-clear-rounds">🗑 Clear All</button>
+    <span style="color:var(--cream-dim);font-size:0.8rem" id="rounds-count"></span>
+  </div>
+
+  <div id="rounds-list"></div>
+
+  <div class="notice" id="no-rounds-notice">
+    No rounds yet. Click <strong>+ Add Round</strong> to get started, or add them one by one as you collect vacation photos.
+  </div>
+</div>
+
+<!-- ══════════ GAME TAB ══════════ -->
+<div class="tab-content" id="tab-game">
+
+  <div class="connect-box" id="connect-box">
+    <div class="section-title">Connect to Firebase</div>
+    <p style="font-size:0.85rem;color:var(--cream-dim);margin-bottom:1rem">
+      Make sure you've saved your settings first. This resets any previous game session.
+    </p>
+    <button class="btn btn-primary" id="btn-connect">Connect & Open Lobby →</button>
+    <div class="notice" id="connect-error" style="display:none;color:var(--red);border-color:var(--red);background:rgba(224,92,58,0.1)"></div>
+  </div>
+
+  <div id="game-panel" style="display:none">
+
+    <div class="card">
+      <div class="section-title">Join Code</div>
+      <div class="join-code-display" id="display-join-code">—</div>
+      <div style="text-align:center;font-size:0.78rem;color:var(--cream-dim);margin-top:0.25rem">Share this with players</div>
+    </div>
+
+    <div class="status-grid">
+      <div class="stat-box">
+        <div class="stat-value" id="stat-players">0</div>
+        <div class="stat-label">Players Joined</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="stat-round">—</div>
+        <div class="stat-label">Current Round</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="stat-guesses">—</div>
+        <div class="stat-label">Guesses In</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="phase-indicator">
+        <div class="phase-dot" id="phase-dot"></div>
+        <span id="phase-label">Waiting in lobby</span>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Players</div>
+      <div class="player-grid" id="player-grid"></div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
+      <button class="btn btn-success" id="btn-start-game" disabled>▶ Start Game</button>
+      <button class="btn btn-danger" id="btn-stop-game">⏹ Stop Game</button>
+    </div>
+    <div style="font-size:0.78rem;color:var(--cream-dim);margin-top:0.5rem">Minimum 2 players to start.</div>
+  </div>
+</div>
+
+<script type="module">
+const { initializeApp, getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc } = window._fb;
+
+// ── STORAGE KEYS ──────────────────────────────────────────────
+const STORAGE_SETTINGS = 'wthwy_settings';
+const STORAGE_ROUNDS   = 'wthwy_rounds';
+
+// ── STATE ─────────────────────────────────────────────────────
+let db = null;
+let rounds = [];      // [{ id, submittedBy, locationName, lat, lng, photoB64 }]
+let settings = {};
+let players = {};     // id -> name
+let scores = {};      // id -> { name, total }
+let currentRound = 0;
+let gameRunning = false;
+let phaseTimeout = null;
+
+// ── TABS ──────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── LOAD SETTINGS ─────────────────────────────────────────────
+function loadSettings() {
+  try {
+    settings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}');
+  } catch { settings = {}; }
+  if (settings.apiKey)    document.getElementById('cfg-apiKey').value    = settings.apiKey;
+  if (settings.projectId) document.getElementById('cfg-projectId').value = settings.projectId;
+  if (settings.appId)     document.getElementById('cfg-appId').value     = settings.appId;
+  if (settings.joinCode)  document.getElementById('cfg-joincode').value  = settings.joinCode;
+  if (settings.ready)     document.getElementById('cfg-ready').value     = settings.ready;
+  if (settings.guess)     document.getElementById('cfg-guess').value     = settings.guess;
+  if (settings.reveal)    document.getElementById('cfg-reveal').value    = settings.reveal;
+}
+
+// ── SAVE SETTINGS ─────────────────────────────────────────────
+document.getElementById('btn-save-settings').addEventListener('click', () => {
+  settings = {
+    apiKey:    document.getElementById('cfg-apiKey').value.trim(),
+    projectId: document.getElementById('cfg-projectId').value.trim(),
+    appId:     document.getElementById('cfg-appId').value.trim(),
+    joinCode:  document.getElementById('cfg-joincode').value.trim().toUpperCase(),
+    ready:     parseInt(document.getElementById('cfg-ready').value) || 5,
+    guess:     parseInt(document.getElementById('cfg-guess').value) || 10,
+    reveal:    parseInt(document.getElementById('cfg-reveal').value) || 15,
+  };
+  localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
+  const saved = document.getElementById('settings-saved');
+  saved.style.display = 'inline';
+  setTimeout(() => saved.style.display = 'none', 2000);
+});
+
+// ── LOAD ROUNDS ───────────────────────────────────────────────
+function loadRounds() {
+  try {
+    rounds = JSON.parse(localStorage.getItem(STORAGE_ROUNDS) || '[]');
+  } catch { rounds = []; }
+  renderRounds();
+}
+
+function saveRounds() {
+  localStorage.setItem(STORAGE_ROUNDS, JSON.stringify(rounds));
+}
+
+// ── RENDER ROUNDS ─────────────────────────────────────────────
+function renderRounds() {
+  const list = document.getElementById('rounds-list');
+  const notice = document.getElementById('no-rounds-notice');
+  const count = document.getElementById('rounds-count');
+
+  list.innerHTML = '';
+  notice.style.display = rounds.length ? 'none' : 'block';
+  count.textContent = rounds.length ? `${rounds.length} round${rounds.length > 1 ? 's' : ''}` : '';
+
+  rounds.forEach((r, i) => {
+    const complete = r.submittedBy && r.locationName && r.lat && r.lng && r.photoB64;
+    const card = document.createElement('div');
+    card.className = 'round-card';
+    card.dataset.index = i;
+
+    card.innerHTML = `
+      <div class="round-card-header">
+        <span class="drag-handle" title="Drag to reorder">⠿</span>
+        <span class="round-num">Round ${i + 1}</span>
+        <div class="round-summary">
+          ${r.submittedBy ? `<strong>${escHtml(r.submittedBy)}</strong>` : '<em>No name</em>'}
+          ${r.locationName ? ` · ${escHtml(r.locationName)}` : ''}
+          ${r.lat && r.lng ? ` · ${parseFloat(r.lat).toFixed(2)}, ${parseFloat(r.lng).toFixed(2)}` : ''}
+        </div>
+        <span class="round-status ${complete ? 'complete' : 'incomplete'}">${complete ? '✓ Ready' : '⚠ Incomplete'}</span>
+        <span style="color:var(--cream-dim);font-size:1rem;margin-left:0.25rem" class="toggle-arrow">▾</span>
+      </div>
+      <div class="round-card-body" id="body-${i}">
+        <div class="photo-preview-wrap">
+          <div class="photo-preview" id="preview-${i}">
+            ${r.photoB64 ? `<img src="${r.photoB64}" alt="Round ${i+1}">` : '📷<br>No photo'}
+          </div>
+          <div style="flex:1">
+            <div class="field-row col1">
+              <div class="field">
+                <label>Submitted by</label>
+                <input type="text" class="r-submittedBy" value="${escAttr(r.submittedBy || '')}" placeholder="Marie" maxlength="40" data-i="${i}">
+              </div>
+            </div>
+            <div class="field-row col1">
+              <div class="field">
+                <label>Location Name</label>
+                <input type="text" class="r-locationName" value="${escAttr(r.locationName || '')}" placeholder="Paris, France" data-i="${i}">
+              </div>
+            </div>
+            <div class="field-row col2">
+              <div class="field">
+                <label>Latitude</label>
+                <input type="number" class="r-lat" value="${r.lat || ''}" placeholder="48.8566" step="0.0001" data-i="${i}">
+              </div>
+              <div class="field">
+                <label>Longitude</label>
+                <input type="number" class="r-lng" value="${r.lng || ''}" placeholder="2.3522" step="0.0001" data-i="${i}">
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="round-actions">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;position:relative;overflow:hidden">
+            📂 ${r.photoB64 ? 'Replace Photo' : 'Upload Photo'}
+            <input type="file" accept="image/*" style="position:absolute;inset:0;opacity:0;cursor:pointer" class="photo-upload" data-i="${i}">
+          </label>
+          <button class="btn btn-secondary btn-sm move-up" data-i="${i}">↑ Move Up</button>
+          <button class="btn btn-secondary btn-sm move-down" data-i="${i}">↓ Move Down</button>
+          <button class="btn btn-danger btn-sm delete-round" data-i="${i}">🗑 Delete</button>
+        </div>
+      </div>
+    `;
+
+    list.appendChild(card);
+
+    // Toggle open/close
+    card.querySelector('.round-card-header').addEventListener('click', () => {
+      const body = document.getElementById(`body-${i}`);
+      body.classList.toggle('open');
+      card.querySelector('.toggle-arrow').textContent = body.classList.contains('open') ? '▴' : '▾';
+    });
+  });
+
+  // Wire up inputs
+  document.querySelectorAll('.r-submittedBy').forEach(el => {
+    el.addEventListener('change', e => { rounds[e.target.dataset.i].submittedBy = e.target.value.trim(); saveRounds(); renderRounds(); });
+  });
+  document.querySelectorAll('.r-locationName').forEach(el => {
+    el.addEventListener('change', e => { rounds[e.target.dataset.i].locationName = e.target.value.trim(); saveRounds(); renderRounds(); });
+  });
+  document.querySelectorAll('.r-lat').forEach(el => {
+    el.addEventListener('change', e => { rounds[e.target.dataset.i].lat = parseFloat(e.target.value); saveRounds(); renderRounds(); });
+  });
+  document.querySelectorAll('.r-lng').forEach(el => {
+    el.addEventListener('change', e => { rounds[e.target.dataset.i].lng = parseFloat(e.target.value); saveRounds(); renderRounds(); });
+  });
+
+  // Photo upload
+  document.querySelectorAll('.photo-upload').forEach(el => {
+    el.addEventListener('change', e => {
+      const i = parseInt(e.target.dataset.i);
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        rounds[i].photoB64 = ev.target.result;
+        saveRounds();
+        renderRounds();
+        // Re-open the card
+        setTimeout(() => {
+          const body = document.getElementById(`body-${i}`);
+          if (body) { body.classList.add('open'); document.querySelector(`[data-index="${i}"] .toggle-arrow`).textContent = '▴'; }
+        }, 50);
+      };
+      reader.readAsDataURL(file);
+    });
+  });
+
+  // Move up/down
+  document.querySelectorAll('.move-up').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = parseInt(e.target.dataset.i);
+      if (i === 0) return;
+      [rounds[i-1], rounds[i]] = [rounds[i], rounds[i-1]];
+      saveRounds(); renderRounds();
+    });
+  });
+  document.querySelectorAll('.move-down').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = parseInt(e.target.dataset.i);
+      if (i === rounds.length - 1) return;
+      [rounds[i], rounds[i+1]] = [rounds[i+1], rounds[i]];
+      saveRounds(); renderRounds();
+    });
+  });
+
+  // Delete
+  document.querySelectorAll('.delete-round').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = parseInt(e.target.dataset.i);
+      if (confirm(`Delete Round ${i + 1}?`)) {
+        rounds.splice(i, 1);
+        saveRounds(); renderRounds();
+      }
+    });
+  });
+}
+
+// ── ADD / CLEAR ROUNDS ────────────────────────────────────────
+document.getElementById('btn-add-round').addEventListener('click', () => {
+  rounds.push({ id: Date.now(), submittedBy: '', locationName: '', lat: '', lng: '', photoB64: '' });
+  saveRounds();
+  renderRounds();
+  // Auto-open the new card
+  setTimeout(() => {
+    const i = rounds.length - 1;
+    const body = document.getElementById(`body-${i}`);
+    if (body) { body.classList.add('open'); document.querySelector(`[data-index="${i}"] .toggle-arrow`).textContent = '▴'; }
+  }, 50);
+});
+
+document.getElementById('btn-clear-rounds').addEventListener('click', () => {
+  if (confirm('Delete all rounds? This cannot be undone.')) {
+    rounds = [];
+    saveRounds();
+    renderRounds();
+  }
+});
+
+// ── CONNECT ───────────────────────────────────────────────────
+document.getElementById('btn-connect').addEventListener('click', async () => {
+  settings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}');
+  if (!settings.apiKey || !settings.projectId) {
+    showConnectError('Please fill in and save your Firebase settings first.');
+    return;
+  }
+  const readyRounds = rounds.filter(r => r.submittedBy && r.locationName && r.lat && r.lng && r.photoB64);
+  if (readyRounds.length === 0) {
+    showConnectError('No complete rounds found. Add at least one round with photo, name, location, and coordinates.');
+    return;
+  }
+
+  try {
+    const app = initializeApp({
+      apiKey:     settings.apiKey,
+      authDomain: `${settings.projectId}.firebaseapp.com`,
+      projectId:  settings.projectId,
+      appId:      settings.appId,
+    });
+    db = getFirestore(app);
+
+    // Clear previous session
+    await setDoc(doc(db, 'game', 'state'), {
+      phase: 'lobby',
+      round: 0,
+      totalRounds: readyRounds.length,
+      joinCode: settings.joinCode,
+      timerReady: settings.ready || 5,
+      timerGuess: settings.guess || 10,
+      timerReveal: settings.reveal || 15,
+      scores: {},
+      phaseStart: null,
+    });
+    const gSnap = await getDocs(collection(db, 'guesses'));
+    for (const d of gSnap.docs) await deleteDoc(d.ref);
+    const pSnap = await getDocs(collection(db, 'players'));
+    for (const d of pSnap.docs) await deleteDoc(d.ref);
+
+    document.getElementById('connect-box').style.display = 'none';
+    document.getElementById('game-panel').style.display = 'block';
+    document.getElementById('display-join-code').textContent = settings.joinCode;
+
+    startListening();
+
+  } catch(e) {
+    showConnectError('Firebase error: ' + e.message);
+  }
+});
+
+function showConnectError(msg) {
+  const el = document.getElementById('connect-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── LISTEN ────────────────────────────────────────────────────
+function startListening() {
+  onSnapshot(collection(db, 'players'), snap => {
+    players = {};
+    snap.forEach(d => { players[d.id] = d.data().name; });
+    document.getElementById('stat-players').textContent = Object.keys(players).length;
+    document.getElementById('btn-start-game').disabled = Object.keys(players).length < 2;
+    const grid = document.getElementById('player-grid');
+    grid.innerHTML = '';
+    Object.values(players).forEach(name => {
+      const chip = document.createElement('div');
+      chip.className = 'player-chip';
+      chip.textContent = name;
+      grid.appendChild(chip);
+    });
+  });
+
+  onSnapshot(collection(db, 'guesses'), snap => {
+    const count = snap.size;
+    document.getElementById('stat-guesses').textContent = gameRunning ? `${count} / ${Object.keys(players).length}` : '—';
+  });
+
+  onSnapshot(doc(db, 'game', 'state'), snap => {
+    if (!snap.exists()) return;
+    const s = snap.data();
+    document.getElementById('stat-round').textContent = s.round || '—';
+    document.getElementById('phase-label').textContent = phaseDescription(s.phase);
+    document.getElementById('phase-dot').className = 'phase-dot' + (['round-guess','round-reveal','get-ready'].includes(s.phase) ? ' active' : '');
+  });
+}
+
+function phaseDescription(phase) {
+  const map = {
+    'lobby': 'Waiting in lobby',
+    'get-ready': 'Get ready countdown',
+    'round-guess': 'Players guessing',
+    'round-reveal': 'Revealing answers',
+    'final': 'Game over',
+  };
+  return map[phase] || phase;
+}
+
+// ── START GAME ────────────────────────────────────────────────
+document.getElementById('btn-start-game').addEventListener('click', async () => {
+  if (Object.keys(players).length < 2) return;
+  gameRunning = true;
+  scores = {};
+  Object.entries(players).forEach(([id, name]) => { scores[id] = { name, total: 0, color: assignColor(id) }; });
+  currentRound = 0;
+  document.getElementById('btn-start-game').disabled = true;
+  await nextRound();
+});
+
+// ── GAME LOOP ─────────────────────────────────────────────────
+const readyRounds = () => rounds.filter(r => r.submittedBy && r.locationName && r.lat && r.lng && r.photoB64);
+
+async function nextRound() {
+  currentRound++;
+  const rds = readyRounds();
+  if (currentRound > rds.length) {
+    await endGame();
+    return;
+  }
+
+  const r = rds[currentRound - 1];
+  const s = settings;
+
+  // Clear guesses
+  const gSnap = await getDocs(collection(db, 'guesses'));
+  for (const d of gSnap.docs) await deleteDoc(d.ref);
+
+  // GET READY phase
+  const readyStart = Date.now();
+  await setDoc(doc(db, 'game', 'state'), {
+    phase: 'get-ready',
+    round: currentRound,
+    totalRounds: rds.length,
+    joinCode: s.joinCode,
+    timerReady: s.ready || 5,
+    timerGuess: s.guess || 10,
+    timerReveal: s.reveal || 15,
+    phaseStart: readyStart,
+    scores: buildScoreMap(),
+    submittedBy: r.submittedBy,
+    locationName: r.locationName,
+    lat: null, lng: null, // hidden during guessing
+  });
+
+  updateProgress('get-ready', currentRound, rds.length);
+
+  await wait((s.ready || 5) * 1000);
+  if (!gameRunning) return;
+
+  // GUESS phase
+  const guessStart = Date.now();
+  await setDoc(doc(db, 'game', 'state'), {
+    phase: 'round-guess',
+    round: currentRound,
+    totalRounds: rds.length,
+    joinCode: s.joinCode,
+    timerReady: s.ready || 5,
+    timerGuess: s.guess || 10,
+    timerReveal: s.reveal || 15,
+    phaseStart: guessStart,
+    scores: buildScoreMap(),
+    submittedBy: r.submittedBy,
+    locationName: r.locationName,
+    photoB64: r.photoB64,
+    lat: null, lng: null, // still hidden
+  });
+
+  updateProgress('round-guess', currentRound, rds.length);
+
+  await wait((s.guess || 10) * 1000);
+  if (!gameRunning) return;
+
+  // Score calculation
+  const guessSnap = await getDocs(collection(db, 'guesses'));
+  const guessResults = {};
+  const timerDurationMs = (s.guess || 10) * 1000;
+
+  guessSnap.forEach(d => {
+    const g = d.data();
+    const pid = d.id;
+    const dist = haversine(g.lat, g.lng, parseFloat(r.lat), parseFloat(r.lng));
+    const distScore = Math.max(0, 1000 * (1 - dist / 10000));
+    const elapsed = Math.min(Math.max((g.submittedAt - guessStart) / timerDurationMs, 0), 1);
+    const speedBonus = 1.0 + (1 - elapsed) * 0.5;
+    const roundScore = Math.round(distScore * speedBonus);
+
+    if (!scores[pid]) scores[pid] = { name: g.name, total: 0, color: assignColor(pid) };
+    scores[pid].total += roundScore;
+    scores[pid].name = g.name;
+
+    guessResults[pid] = {
+      name: g.name,
+      lat: g.lat,
+      lng: g.lng,
+      dist: Math.round(dist),
+      roundScore,
+      submittedAt: g.submittedAt,
+      color: scores[pid].color,
+    };
+  });
+
+  // REVEAL phase
+  await setDoc(doc(db, 'game', 'state'), {
+    phase: 'round-reveal',
+    round: currentRound,
+    totalRounds: rds.length,
+    joinCode: s.joinCode,
+    timerReady: s.ready || 5,
+    timerGuess: s.guess || 10,
+    timerReveal: s.reveal || 15,
+    phaseStart: Date.now(),
+    scores: buildScoreMap(),
+    submittedBy: r.submittedBy,
+    locationName: r.locationName,
+    photoB64: r.photoB64,
+    lat: parseFloat(r.lat),
+    lng: parseFloat(r.lng),
+    guessResults,
+  });
+
+  updateProgress('round-reveal', currentRound, rds.length);
+
+  await wait((s.reveal || 15) * 1000);
+  if (!gameRunning) return;
+
+  await nextRound();
+}
+
+async function endGame() {
+  gameRunning = false;
+  await setDoc(doc(db, 'game', 'state'), {
+    phase: 'final',
+    round: currentRound,
+    totalRounds: readyRounds().length,
+    joinCode: settings.joinCode,
+    timerReady: 0, timerGuess: 0, timerReveal: 0,
+    phaseStart: Date.now(),
+    scores: buildScoreMap(),
+    submittedBy: '', locationName: '', lat: null, lng: null,
+  });
+  updateProgress('final', currentRound, readyRounds().length);
+}
+
+document.getElementById('btn-stop-game').addEventListener('click', async () => {
+  if (!confirm('Stop the game? This will end it for all players.')) return;
+  gameRunning = false;
+  clearTimeout(phaseTimeout);
+  await endGame();
+});
+
+// ── HELPERS ───────────────────────────────────────────────────
+function wait(ms) {
+  return new Promise(resolve => { phaseTimeout = setTimeout(resolve, ms); });
+}
+
+function buildScoreMap() {
+  const m = {};
+  Object.entries(scores).forEach(([id, s]) => {
+    m[id] = { name: s.name, total: s.total, color: s.color };
+  });
+  return m;
+}
+
+function updateProgress(phase, round, total) {
+  const pct = Math.round((round / total) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+const COLORS = ['#E8A838','#4CAF7D','#60A5FA','#F472B6','#A78BFA','#34D399','#FB923C','#F87171','#38BDF8','#FBBF24','#E879F9','#4ADE80'];
+const colorMap = {};
+function assignColor(id) {
+  if (!colorMap[id]) {
+    const used = Object.values(colorMap).length;
+    colorMap[id] = COLORS[used % COLORS.length];
+  }
+  return colorMap[id];
+}
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s).replace(/"/g,'&quot;'); }
+
+// ── INIT ──────────────────────────────────────────────────────
+loadSettings();
+loadRounds();
+</script>
+</body>
+</html>
