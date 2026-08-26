@@ -218,7 +218,7 @@ html, body {
   min-height: 0;
 }
 
-#player-map { width: 100%; height: 100%; }
+#player-map { position: absolute; inset: 0; }
 
 .map-hint {
   position: absolute;
@@ -686,7 +686,7 @@ function handleState(state) {
     case 'round-guess':
       showScreen('screen-guess');
       initMap();
-      setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (map) map.invalidateSize(); }));
       document.getElementById('guess-round-chip').textContent = `Round ${state.round} / ${state.totalRounds}`;
       document.getElementById('map-overlay').style.display = 'none';
       if (currentPhase !== 'round-guess') {
@@ -739,6 +739,7 @@ function initMap() {
     attribution: '©OpenStreetMap ©CARTO', maxZoom: 18
   }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
+  setTimeout(() => map.invalidateSize(), 300);
 
   map.on('click', e => {
     if (submitted || currentPhase !== 'round-guess') return;
