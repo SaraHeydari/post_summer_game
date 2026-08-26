@@ -686,6 +686,7 @@ function handleState(state) {
     case 'round-guess':
       showScreen('screen-guess');
       initMap();
+      setTimeout(() => { if (map) map.invalidateSize(); }, 100);
       document.getElementById('guess-round-chip').textContent = `Round ${state.round} / ${state.totalRounds}`;
       document.getElementById('map-overlay').style.display = 'none';
       if (currentPhase !== 'round-guess') {
