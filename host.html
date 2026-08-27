@@ -399,26 +399,10 @@ body {
 <div class="tab-content active" id="tab-settings">
 
   <div class="card">
-    <div class="section-title">Firebase Configuration</div>
-    <div class="field-row col2">
-      <div class="field">
-        <label>API Key</label>
-        <input type="text" id="cfg-apiKey" placeholder="AIzaSy..." autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Project ID</label>
-        <input type="text" id="cfg-projectId" placeholder="yourapp-12345" autocomplete="off">
-      </div>
-    </div>
-    <div class="field-row col2">
-      <div class="field">
-        <label>App ID</label>
-        <input type="text" id="cfg-appId" placeholder="1:123456:web:abc123" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Join Code</label>
-        <input type="text" id="cfg-joincode" placeholder="e.g. TRAVEL42" maxlength="20" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.1em">
-      </div>
+    <div class="section-title">Join Code</div>
+    <div class="field" style="max-width:240px">
+      <label>Join Code</label>
+      <input type="text" id="cfg-joincode" placeholder="e.g. TRAVEL42" maxlength="20" autocomplete="off" style="text-transform:uppercase;letter-spacing:0.1em">
     </div>
   </div>
 
@@ -513,6 +497,7 @@ body {
     <div style="display:flex;gap:0.75rem;flex-wrap:wrap">
       <button class="btn btn-success" id="btn-start-game" disabled>▶ Start Game</button>
       <button class="btn btn-danger" id="btn-stop-game">⏹ Stop Game</button>
+      <button class="btn btn-secondary" id="btn-new-game">↺ New Game</button>
     </div>
     <div style="font-size:0.78rem;color:var(--cream-dim);margin-top:0.5rem">Minimum 2 players to start.</div>
   </div>
@@ -520,6 +505,13 @@ body {
 
 <script type="module">
 const { initializeApp, getFirestore, doc, setDoc, getDoc, onSnapshot, collection, getDocs, deleteDoc } = window._fb;
+
+// ── FIREBASE CONFIG ───────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:    "AIzaSyA_EzDHoKQOddU0WqLEVRuQuRWrMzZlC08",
+  projectId: "post-summer-event",
+  appId:     "1:575557575516:web:49fc11a1c0809156329799",
+};
 
 // ── STORAGE KEYS ──────────────────────────────────────────────
 const STORAGE_SETTINGS = 'wthwy_settings';
@@ -550,25 +542,19 @@ function loadSettings() {
   try {
     settings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}');
   } catch { settings = {}; }
-  if (settings.apiKey)    document.getElementById('cfg-apiKey').value    = settings.apiKey;
-  if (settings.projectId) document.getElementById('cfg-projectId').value = settings.projectId;
-  if (settings.appId)     document.getElementById('cfg-appId').value     = settings.appId;
-  if (settings.joinCode)  document.getElementById('cfg-joincode').value  = settings.joinCode;
-  if (settings.ready)     document.getElementById('cfg-ready').value     = settings.ready;
-  if (settings.guess)     document.getElementById('cfg-guess').value     = settings.guess;
-  if (settings.reveal)    document.getElementById('cfg-reveal').value    = settings.reveal;
+  if (settings.joinCode) document.getElementById('cfg-joincode').value = settings.joinCode;
+  if (settings.ready)    document.getElementById('cfg-ready').value    = settings.ready;
+  if (settings.guess)    document.getElementById('cfg-guess').value    = settings.guess;
+  if (settings.reveal)   document.getElementById('cfg-reveal').value   = settings.reveal;
 }
 
 // ── SAVE SETTINGS ─────────────────────────────────────────────
 document.getElementById('btn-save-settings').addEventListener('click', () => {
   settings = {
-    apiKey:    document.getElementById('cfg-apiKey').value.trim(),
-    projectId: document.getElementById('cfg-projectId').value.trim(),
-    appId:     document.getElementById('cfg-appId').value.trim(),
-    joinCode:  document.getElementById('cfg-joincode').value.trim().toUpperCase(),
-    ready:     parseInt(document.getElementById('cfg-ready').value) || 5,
-    guess:     parseInt(document.getElementById('cfg-guess').value) || 10,
-    reveal:    parseInt(document.getElementById('cfg-reveal').value) || 15,
+    joinCode: document.getElementById('cfg-joincode').value.trim().toUpperCase(),
+    ready:    parseInt(document.getElementById('cfg-ready').value) || 5,
+    guess:    parseInt(document.getElementById('cfg-guess').value) || 10,
+    reveal:   parseInt(document.getElementById('cfg-reveal').value) || 15,
   };
   localStorage.setItem(STORAGE_SETTINGS, JSON.stringify(settings));
   const saved = document.getElementById('settings-saved');
@@ -593,6 +579,13 @@ function renderRounds() {
   const list = document.getElementById('rounds-list');
   const notice = document.getElementById('no-rounds-notice');
   const count = document.getElementById('rounds-count');
+
+  // Remember which cards are currently open
+  const openIndices = new Set();
+  document.querySelectorAll('.round-card-body.open').forEach(el => {
+    const m = el.id.match(/^body-(\d+)$/);
+    if (m) openIndices.add(parseInt(m[1]));
+  });
 
   list.innerHTML = '';
   notice.style.display = rounds.length ? 'none' : 'block';
@@ -659,6 +652,12 @@ function renderRounds() {
     `;
 
     list.appendChild(card);
+
+    // Restore open state
+    if (openIndices.has(i)) {
+      document.getElementById(`body-${i}`).classList.add('open');
+      card.querySelector('.toggle-arrow').textContent = '▴';
+    }
 
     // Toggle open/close
     card.querySelector('.round-card-header').addEventListener('click', () => {
@@ -760,8 +759,8 @@ document.getElementById('btn-clear-rounds').addEventListener('click', () => {
 // ── CONNECT ───────────────────────────────────────────────────
 document.getElementById('btn-connect').addEventListener('click', async () => {
   settings = JSON.parse(localStorage.getItem(STORAGE_SETTINGS) || '{}');
-  if (!settings.apiKey || !settings.projectId) {
-    showConnectError('Please fill in and save your Firebase settings first.');
+  if (!settings.joinCode) {
+    showConnectError('Please set a join code in Settings first.');
     return;
   }
   const readyRounds = rounds.filter(r => r.submittedBy && r.locationName && r.lat && r.lng && r.photoB64);
@@ -772,10 +771,8 @@ document.getElementById('btn-connect').addEventListener('click', async () => {
 
   try {
     const app = initializeApp({
-      apiKey:     settings.apiKey,
-      authDomain: `${settings.projectId}.firebaseapp.com`,
-      projectId:  settings.projectId,
-      appId:      settings.appId,
+      ...FIREBASE_CONFIG,
+      authDomain: `${FIREBASE_CONFIG.projectId}.firebaseapp.com`,
     });
     db = getFirestore(app);
 
@@ -1005,6 +1002,44 @@ document.getElementById('btn-stop-game').addEventListener('click', async () => {
   gameRunning = false;
   clearTimeout(phaseTimeout);
   await endGame();
+});
+
+document.getElementById('btn-new-game').addEventListener('click', async () => {
+  if (!confirm('Reset and start a new game? Players will need to rejoin.')) return;
+  gameRunning = false;
+  clearTimeout(phaseTimeout);
+
+  // Clear Firestore
+  const gSnap = await getDocs(collection(db, 'guesses'));
+  for (const d of gSnap.docs) await deleteDoc(d.ref);
+  const pSnap = await getDocs(collection(db, 'players'));
+  for (const d of pSnap.docs) await deleteDoc(d.ref);
+  await setDoc(doc(db, 'game', 'state'), {
+    phase: 'lobby',
+    round: 0,
+    totalRounds: readyRounds().length,
+    joinCode: settings.joinCode,
+    timerReady: settings.ready || 5,
+    timerGuess: settings.guess || 10,
+    timerReveal: settings.reveal || 15,
+    scores: {},
+    phaseStart: null,
+  });
+
+  // Reset JS state
+  players = {};
+  scores = {};
+  currentRound = 0;
+
+  // Reset game panel UI
+  document.getElementById('stat-players').textContent = '0';
+  document.getElementById('stat-round').textContent = '—';
+  document.getElementById('stat-guesses').textContent = '—';
+  document.getElementById('player-grid').innerHTML = '';
+  document.getElementById('phase-label').textContent = 'Waiting in lobby';
+  document.getElementById('phase-dot').className = 'phase-dot';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('btn-start-game').disabled = true;
 });
 
 // ── HELPERS ───────────────────────────────────────────────────
