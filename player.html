@@ -735,8 +735,8 @@ function initMap() {
   mapInited = true;
   map = L.map('player-map', { zoomControl: false, tap: true, tapTolerance: 15 })
     .setView([30, 10], 2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '©OpenStreetMap ©CARTO', maxZoom: 18
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19
   }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   setTimeout(() => map.invalidateSize(), 300);

@@ -568,18 +568,6 @@ canvas.confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-inde
 
   <div class="setup-card">
     <h2>Connect to Game</h2>
-    <div class="field">
-      <label>API Key</label>
-      <input type="text" id="d-apiKey" placeholder="AIzaSy..." autocomplete="off">
-    </div>
-    <div class="field">
-      <label>Project ID</label>
-      <input type="text" id="d-projectId" placeholder="yourapp-12345" autocomplete="off">
-    </div>
-    <div class="field">
-      <label>App ID</label>
-      <input type="text" id="d-appId" placeholder="1:123456:web:abc123" autocomplete="off">
-    </div>
     <button class="btn-connect" id="btn-connect">Connect →</button>
     <div class="setup-error" id="setup-error"></div>
   </div>
@@ -658,6 +646,13 @@ canvas.confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-inde
 <script type="module">
 const { initializeApp, getFirestore, doc, onSnapshot, collection } = window._fb;
 
+// ── FIREBASE CONFIG ───────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey:    "AIzaSyA_EzDHoKQOddU0WqLEVRuQuRWrMzZlC08",
+  projectId: "post-summer-event",
+  appId:     "1:575557575516:web:49fc11a1c0809156329799",
+};
+
 // ── STATE ─────────────────────────────────────────────────────
 let db, map, correctMarker = null, guessPins = [];
 let timerInterval = null;
@@ -673,15 +668,8 @@ function showScreen(id) {
 
 // ── CONNECT ───────────────────────────────────────────────────
 document.getElementById('btn-connect').addEventListener('click', async () => {
-  const apiKey    = document.getElementById('d-apiKey').value.trim();
-  const projectId = document.getElementById('d-projectId').value.trim();
-  const appId     = document.getElementById('d-appId').value.trim();
-  if (!apiKey || !projectId) {
-    showError('Please fill in all fields.');
-    return;
-  }
   try {
-    const app = initializeApp({ apiKey, authDomain: `${projectId}.firebaseapp.com`, projectId, appId });
+    const app = initializeApp({ ...FIREBASE_CONFIG, authDomain: `${FIREBASE_CONFIG.projectId}.firebaseapp.com` });
     db = getFirestore(app);
     initMap();
     startListening();
@@ -784,8 +772,8 @@ function startCountdown(elId, startTs, duration, urgent = false) {
 function initMap() {
   map = L.map('reveal-map', { zoomControl: false, attributionControl: true })
     .setView([30, 10], 2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '©OpenStreetMap ©CARTO', maxZoom: 18
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors', maxZoom: 19
   }).addTo(map);
 }
 
